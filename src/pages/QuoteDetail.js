@@ -1,21 +1,22 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 import { useParams, Route, Link, useRouteMatch } from "react-router-dom";
 
 import Comments from "../components/comments/Comments";
 import HighlightedQuote from "../components/quotes/HighlightedQuote";
+import LoadingSpinner from "../components/UI/LoadingSpinner";
 
-const QUOTES = [
-	{ id: "q1", author: "Samko", text: "Learning React is fun!" },
-	{
-		id: "q2",
-		author: "Max",
-		text: "I'll copy that and create another quote with a different id.",
-	},
-];
+import useHttp from "../hooks/use-http";
+import { getSingleQuote } from "../lib/api";
 
 export default function QuoteDetail() {
 	const params = useParams();
+	const { sendRequest, status, data: loadedData, error } = useHttp(getSingleQuote, true);
+
+	useEffect(() => {
+		sendRequest(params.quoteId);
+	}, [params.quoteId, sendRequest]);
+
 	/**
 	 * useRouteMatch returns an object with info of the route that it's called in.
 	 * params => same as useParams
@@ -23,16 +24,26 @@ export default function QuoteDetail() {
 	 * url => the url but with params as values e.g /quotes/q1
 	 */
 	const match = useRouteMatch();
-	console.log(match);
-	const quote = QUOTES.find((quote) => quote.id === params.quoteId);
 
-	if (!quote) {
-		return <p>No quote found!</p>;
+	if (status === "pending") {
+		return (
+			<div className="centered">
+				<LoadingSpinner />
+			</div>
+		);
+	}
+
+	if (!loadedData) {
+		return <p className="centered">No quote found!</p>;
+	}
+
+	if (error) {
+		return <p className="centered">{error}</p>;
 	}
 
 	return (
 		<React.Fragment>
-			<HighlightedQuote text={quote.text} author={quote.author} />
+			<HighlightedQuote text={loadedData.text} author={loadedData.author} />
 			<Route path={match.path} exact>
 				<div className="centered">
 					<Link className="btn--flat" to={`${match.url}/comments`}>
